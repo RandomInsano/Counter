@@ -5,4 +5,7 @@ authors = ["edwinamsler"]
 
 [dependencies]
 image = "*"
-rocket = "*"
+rocket = "0.1.2"
+rocket_codegen = "0.1.2"
+memstream = "0.0.1"
+uuid = "0.2"

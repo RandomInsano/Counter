@@ -1,15 +1,29 @@
 // Attempt to make a silly Lycos-style hit counter using `image` and `Rocket`
+#![feature(plugin)]
+#![plugin(rocket_codegen)]
 
+extern crate rocket;
 extern crate image;
+extern crate memstream;
+extern crate uuid;
 
+use std::collections::HashMap;
 use std::path::Path;
-use std::fs::File;
+use std::sync::Mutex;
 
 use image::{
     GenericImage,
     ImageBuffer,
     DynamicImage
 };
+
+use rocket::response::{
+    Stream
+};
+use rocket::request::FromParam;
+use rocket::response::content::Content;
+use rocket::http::ContentType;
+use memstream::MemStream;
 
 const DIGIT_HEIGHT: u32 = 32;
 const DIGIT_WIDTH: u32 = 32;
@@ -18,16 +32,25 @@ const IMAGE_HEIGHT: u32 = DIGIT_HEIGHT;
 const IMAGE_WIDTH: u32 = DIGIT_WIDTH * IMAGE_DIGITS;
 
 const PATH_SPRITES: &'static str = "./resources/digits.png";
-const PATH_OUT: &'static str = "out.png";
 
 const NUMBER: u32 = 3423428978;
 
 fn main() {
-    let image_count = gen_image(NUMBER);
+    rocket::ignite().mount("/v1.0/", routes![serve_imge]).launch();
+}
 
-    // Save out the buffer
-    let ref mut out_file = File::create(&Path::new(PATH_OUT)).unwrap();
-    image_count.save(out_file, image::PNG).unwrap()
+#[get("/counter/<id>")]
+fn serve_imge(id: String) -> Result<Content<Stream<MemStream>>, &'static str> {
+    if id.len() > 64 {
+        return Err("Id was too long")
+    }
+
+    let mut buffer = MemStream::new();
+    gen_image(NUMBER).save(&mut buffer, image::PNG).unwrap();
+
+    println!("Uuid: {:?}", id);
+
+    Ok(Content(ContentType::PNG, Stream::from(buffer)))
 }
 
 fn gen_image(count: u32) -> DynamicImage {
@@ -51,4 +74,16 @@ fn gen_image(count: u32) -> DynamicImage {
     }
 
     image::ImageRgba8(img)
+}
+
+struct CounterDict {
+    counts: HashMap<String, Mutex<u64>>
+}
+
+impl CounterDict {
+    fn new() -> CounterDict {
+        CounterDict {
+            counts: HashMap::new()
+        }
+    }
 }
