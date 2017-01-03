@@ -103,7 +103,7 @@ impl CounterDict {
             return *count;
         }
 
-        self.counts.write().unwrap().insert(String::from(key), Mutex::new(0));
+        self.counts.write().unwrap().insert(String::from(key), Mutex::new(1));
 
         1
     }
