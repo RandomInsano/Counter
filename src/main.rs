@@ -18,7 +18,9 @@ use std::sync::RwLock;
 use image::{
     GenericImage,
     ImageBuffer,
-    DynamicImage
+    DynamicImage,
+    Pixel,
+    Rgba
 };
 
 use rocket::response::{
@@ -38,6 +40,19 @@ const PATH_SPRITES: &'static str = "./resources/digits.png";
 
 lazy_static! {
     static ref COUNTS: CounterDict = CounterDict::new();
+    static ref DIGITS: Vec<DynamicImage> = {
+        let mut digits = Vec::new();
+        let sprites = image::open(&Path::new(PATH_SPRITES)).unwrap();
+
+        // Create a lookup table for digits. Ideally I could just blit from one image to the other,
+        // but there are no good calls to do that
+        for i in 0 .. 10 {
+            let digit = sprites.clone().crop(0, DIGIT_HEIGHT * i, DIGIT_WIDTH, DIGIT_HEIGHT);
+            digits.push(digit);
+        }
+
+        digits
+    };
 }
 
 fn main() {
@@ -59,20 +74,11 @@ fn serve_imge(id: String) -> Result<Content<Stream<MemStream>>, &'static str> {
 
 fn gen_image(count: u32) -> DynamicImage {
     let mut img = ImageBuffer::new(IMAGE_WIDTH, IMAGE_HEIGHT);
-    let sprites = image::open(&Path::new(PATH_SPRITES)).unwrap();
-    let mut digits = Vec::new();
-
-    // Create a lookup table for digits. Ideally I could just blit from one image to the other,
-    // but there are no good calls to do that
-    for i in 0 .. 10 {
-        let digit = sprites.clone().crop(0, DIGIT_HEIGHT * i, DIGIT_WIDTH, DIGIT_HEIGHT);
-        digits.push(digit);
-    }
 
     let x: u32 = 10;
     for i in 0 .. IMAGE_DIGITS {
         let value = (count / x.pow(IMAGE_DIGITS - 1 - i)) % x;
-        if let Some(digit) = digits.get(value as usize) {
+        if let Some(digit) = DIGITS.get(value as usize) {
             img.copy_from(digit, i * DIGIT_WIDTH, 0);
         }
     }
