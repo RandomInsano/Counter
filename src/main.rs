@@ -19,8 +19,6 @@ use image::{
     GenericImage,
     ImageBuffer,
     DynamicImage,
-    Pixel,
-    Rgba
 };
 
 use rocket::response::{
