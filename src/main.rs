@@ -2,6 +2,9 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 
+#[macro_use]
+extern crate lazy_static;
+
 extern crate rocket;
 extern crate image;
 extern crate memstream;
@@ -10,6 +13,7 @@ extern crate uuid;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
+use std::sync::RwLock;
 
 use image::{
     GenericImage,
@@ -20,7 +24,6 @@ use image::{
 use rocket::response::{
     Stream
 };
-use rocket::request::FromParam;
 use rocket::response::content::Content;
 use rocket::http::ContentType;
 use memstream::MemStream;
@@ -33,7 +36,9 @@ const IMAGE_WIDTH: u32 = DIGIT_WIDTH * IMAGE_DIGITS;
 
 const PATH_SPRITES: &'static str = "./resources/digits.png";
 
-const NUMBER: u32 = 3423428978;
+lazy_static! {
+    static ref COUNTS: CounterDict = CounterDict::new();
+}
 
 fn main() {
     rocket::ignite().mount("/v1.0/", routes![serve_imge]).launch();
@@ -46,9 +51,8 @@ fn serve_imge(id: String) -> Result<Content<Stream<MemStream>>, &'static str> {
     }
 
     let mut buffer = MemStream::new();
-    gen_image(NUMBER).save(&mut buffer, image::PNG).unwrap();
-
-    println!("Uuid: {:?}", id);
+    let number = COUNTS.get(&id);
+    gen_image(number).save(&mut buffer, image::PNG).unwrap();
 
     Ok(Content(ContentType::PNG, Stream::from(buffer)))
 }
@@ -77,13 +81,26 @@ fn gen_image(count: u32) -> DynamicImage {
 }
 
 struct CounterDict {
-    counts: HashMap<String, Mutex<u64>>
+    counts: RwLock<HashMap<String, Mutex<u32>>>,
 }
 
 impl CounterDict {
     fn new() -> CounterDict {
         CounterDict {
-            counts: HashMap::new()
+            counts: RwLock::new(HashMap::new())
         }
+    }
+
+    fn get(&self, key: &str) -> u32 {
+        if let Some(x) = self.counts.read().unwrap().get(key) {
+            let mut count = x.lock().unwrap();
+            *count += 1;
+
+            return *count;
+        }
+
+        self.counts.write().unwrap().insert(String::from(key), Mutex::new(0));
+
+        1
     }
 }
