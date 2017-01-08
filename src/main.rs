@@ -8,7 +8,6 @@ extern crate lazy_static;
 extern crate rocket;
 extern crate image;
 extern crate memstream;
-extern crate uuid;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -21,9 +20,7 @@ use image::{
     DynamicImage,
 };
 
-use rocket::response::{
-    Stream
-};
+use rocket::response::Stream;
 use rocket::response::content::Content;
 use rocket::http::ContentType;
 use memstream::MemStream;
@@ -103,7 +100,10 @@ impl CounterDict {
             return *count;
         }
 
-        self.counts.write().unwrap().insert(String::from(key), Mutex::new(1));
+        self.counts
+            .write()
+            .unwrap()
+            .insert(String::from(key), Mutex::new(1));
 
         1
     }
